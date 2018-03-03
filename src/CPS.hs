@@ -2,78 +2,53 @@
 module CPS where
 
 import Bound
-import Bound.Scope
-import Data.Deriving
-import Data.Int
+import Bound.Var
 import Data.List
-import Data.Semigroup
 
 import Expr
 
-data CPS' a
-  = CInt Int16
-  | CVar a
-  | CAbs Int (Scope Int CPS' a)
-  | CApp (CPS' a) [CPS' a]
-  deriving Functor
-makeBound ''CPS'
-deriveEq1 ''CPS'
-deriveShow1 ''CPS'
-deriving instance Eq a => Eq (CPS' a)
-deriving instance Show a => Show (CPS' a)
-type CPS = CPS' String
-renderCPS :: CPS -> String
-renderCPS = snd . go (("x"<>) . show <$> [0..])
+-- | De Bruijn CPS transformation ala Danvy and Nielsen
+cps :: Expr' a -> Expr' a -> Expr' a
+cps = cps'
   where
-    loop supply f [] = (supply, [])
-    loop supply f (x:xs) =
-      let
-        (supply', x') = f supply x
-        (supply'', xs') = loop supply' f xs
-      in
-        ( supply''
-        , (case x of; CAbs{} -> bracket; CApp{} -> bracket; _ -> id) x' : xs'
-        )
+    isAtomic App{} = False
+    isAtomic Var{} = True
+    isAtomic Abs{} = True
 
-    bracket s = "(" <> s <> ")"
-    go supply (CInt n) = (supply, show n)
-    go supply (CVar s) = (supply, s)
-    go supply (CApp x y) =
-      let
-        (supply', str') = loop supply go (x:y)
-      in
-        (supply', intercalate " " str')
-    go ss (CAbs n e) = 
-       let
-         (ss', str) = go (drop n ss) (instantiateVars (take n ss) e)
-       in
-         (ss', "\\" <> (intercalate " " $ take n ss) <> ". " <> str)
+    cps' :: Expr' a -> Expr' a -> Expr' a
+    cps' e@Var{} k = App k (phi e)
+    cps' e@Abs{} k = App k (phi e)
+    cps' (App a b) k =
+      case (isAtomic a, isAtomic b) of
+        (True, True) -> App (App (phi a) (phi b)) k
+        (False, True) ->
+          cps' a $ Abs . Scope $
+          App
+            (App
+              (Var $ B ())
+              (fmap (F . Var) $ phi b))
+            (fmap (F . Var) k)
+        (True, False) ->
+          cps' b $ Abs . Scope $
+          App
+            (App
+              (fmap (F . Var) $ phi a)
+              (Var $ B ()))
+            (fmap (F . Var) k)
+        (False, False) ->
+          cps' a $ Abs . Scope $
+          cps' (fmap (F . Var) b) $ Abs . Scope $
+          App
+            (App
+              (Var . F . Var $ B ())
+              (Var $ B ()))
+            (fmap (F . Var . F . Var) k)
 
-clam :: String -> CPS -> CPS
-clam n e = CAbs 1 (abstract (`elemIndex` [n]) e)
-
-cps :: Expr -> CPS -> CPS
-cps = t_c
-  where
-    m :: Expr -> CPS
-    m (Int n) = CInt n
-    m (Var s) = CVar s
-    m (Abs s) =
-      CAbs 2 .
-      abstract (`elemIndex` ["x", "k"])
-      $ t_c (instantiate1 (Var "x") s) (CVar "k")
-    m (App _ _) = undefined
-
-    t_c :: Expr -> CPS -> CPS
-    t_c (App f x) k =
-      t_k f $ \f' ->
-      t_k x $ \x' ->
-      CApp f' [x', k]
-    t_c a k = CApp k [m a]
-
-    t_k :: Expr -> (CPS -> CPS) -> CPS
-    t_k (App f x) k =
-      t_k f $ \f' ->
-      t_k x $ \x' ->
-      CApp f' [x', clam "k2" $ k (CVar "k2")]
-    t_k a k = k (m a)
+    phi :: Expr' a -> Expr' a
+    phi (Var x) = Var x
+    phi (Abs s) =
+      Abs . Scope . Abs . Scope $
+      cps'
+        (unvar (F . Var . B) (F . Var . F . Var) <$> fromScope s)
+        (Var $ B ())
+    phi App{} = undefined
