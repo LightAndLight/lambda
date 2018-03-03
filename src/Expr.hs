@@ -1,4 +1,5 @@
-{-# language DeriveFunctor, StandaloneDeriving, TemplateHaskell #-}
+{-# language DeriveFunctor, DeriveFoldable, StandaloneDeriving,
+  TemplateHaskell #-}
 module Expr where
 
 import Bound
@@ -11,7 +12,7 @@ data Expr' a
   | Abs (Scope () Expr' a)
   | App (Expr' a) (Expr' a)
   | Int Int16
-  deriving Functor
+  deriving (Functor, Foldable)
 makeBound ''Expr'
 deriveEq1 ''Expr'
 deriveShow1 ''Expr'

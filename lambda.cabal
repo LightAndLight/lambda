@@ -16,7 +16,7 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Expr, CPS, Value, Compile
+  exposed-modules:     Expr, CPS, Value, Compile, Machine
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base <5, stackmachine, bound, deriving-compat
