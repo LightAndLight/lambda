@@ -3,7 +3,6 @@ module CPS where
 
 import Bound
 import Bound.Var
-import Data.List
 
 import Expr
 
