@@ -13,8 +13,10 @@ cps = cps'
     isAtomic App{} = False
     isAtomic Var{} = True
     isAtomic Abs{} = True
+    isAtomic Int{} = True
 
     cps' :: Expr' a -> Expr' a -> Expr' a
+    cps' e@Int{} k = App k (phi e)
     cps' e@Var{} k = App k (phi e)
     cps' e@Abs{} k = App k (phi e)
     cps' (App a b) k =
@@ -44,7 +46,8 @@ cps = cps'
             (fmap (F . Var . F . Var) k)
 
     phi :: Expr' a -> Expr' a
-    phi (Var x) = Var x
+    phi e@Var{} = e
+    phi e@Int{} = e
     phi (Abs s) =
       Abs . Scope . Abs . Scope $
       cps'
