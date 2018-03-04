@@ -12,10 +12,12 @@ cps = cps'
   where
     isAtomic App{} = False
     isAtomic Var{} = True
+    isAtomic Ctor{} = True
     isAtomic Abs{} = True
     isAtomic Int{} = True
 
     cps' :: Expr' a -> Expr' a -> Expr' a
+    cps' e@Ctor{} k = App k (phi e)
     cps' e@Int{} k = App k (phi e)
     cps' e@Var{} k = App k (phi e)
     cps' e@Abs{} k = App k (phi e)
@@ -46,6 +48,7 @@ cps = cps'
             (fmap (F . Var . F . Var) k)
 
     phi :: Expr' a -> Expr' a
+    phi e@Ctor{} = e
     phi e@Var{} = e
     phi e@Int{} = e
     phi (Abs s) =
