@@ -35,4 +35,5 @@ expr =
     atom =
       (Var <$> runUnspaced identifier) <|>
       (Int . read <$> some digit) <|>
-      (Ctor <$> runUnspaced constructor)
+      (Ctor <$> runUnspaced constructor) <|>
+      between (symbol "(") (char ')') (token expr)

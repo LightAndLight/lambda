@@ -37,7 +37,7 @@ eval = go []
         reflect env e = 
           case e of
             VApp (VCtor "Abs") (VClosure env' x) ->
-              VClosure env' (reflect env' $ go (undefined : env') x)
+              VClosure env' (reflect env' x)
             VApp (VApp (VCtor "App") f) x -> VApp (reflect env f) (reflect env x)
             VApp (VCtor "Var") (VVar v) -> VVar v
             VApp (VCtor "Int") (VInt n) -> VInt n
