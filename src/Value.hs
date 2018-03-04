@@ -11,6 +11,7 @@ data Reference a = Free a | Env Int deriving (Eq, Show)
 
 data Value' a
   = VInt Int16
+  | VString String
   | VCtor String
   | VVar (Reference a)
   | VClosure [Value' a] (Value' a)
@@ -24,6 +25,7 @@ flattenReference (Free (Env n)) = Env n
 flattenReference (Env n) = Env n
 
 flattenValue :: Value' (Reference a) -> Value' a
+flattenValue (VString s) = VString s
 flattenValue (VCtor s) = VCtor s
 flattenValue (VVar a) =
   VVar $ case a of
@@ -35,6 +37,7 @@ flattenValue (VClosure env a) =
 flattenValue (VApp a b) = VApp (flattenValue a) (flattenValue b)
 
 exprValue :: Eq a => Expr' a -> Value' a
+exprValue (String x) = VString x
 exprValue (Int x) = VInt x
 exprValue (Ctor x) = VCtor x
 exprValue (Var x) = VVar $ Free x

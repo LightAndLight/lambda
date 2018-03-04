@@ -12,6 +12,7 @@ data Expr' a
   | Abs (Scope () Expr' a)
   | App (Expr' a) (Expr' a)
   | Ctor String
+  | String String
   | Int Int16
   deriving (Functor, Foldable)
 makeBound ''Expr'
@@ -24,6 +25,7 @@ renderExpr :: Expr -> String
 renderExpr = snd . go (("x"<>) . show <$> [0..])
   where
     bracket s = "(" <> s <> ")"
+    go supply (String s) = (supply, "\"" ++ s ++ "\"")
     go supply (Ctor s) = (supply, s)
     go supply (Var s) = (supply, s)
     go supply (App x y) =
