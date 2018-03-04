@@ -36,31 +36,31 @@ eval = go []
             | ctorOnLeft a' -> VApp a' b'
             | otherwise -> error "stuck term"
       where
-        replaceArg x (VVar (Env 0)) = x
-        replaceArg x (VClosure env body) =
-          VClosure (replaceArg x <$> env) (replaceArg x body)
-        replaceArg x (VApp a b) = VApp (replaceArg x a) (replaceArg x b)
-        replaceArg _ a = a
-
         reify e =
           case e of
             VString s -> VApp (VCtor "String") (VString s)
             VInt n -> VApp (VCtor "Int") (VInt n)
             VCtor s -> VApp (VCtor "Ctor") (VString s)
-            VVar n -> error "this shouldn't happen"
+            VVar n -> undefined -- VApp (VCtor "Var") (VVar n)
             VClosure env body ->
               VApp
                 (VCtor "Abs")
-                (VClosure env $
-                 replaceArg (VApp (VCtor "Var") (VVar $ Env 0)) body)
-            VApp a b -> VApp (VApp (VCtor "App") (reify a)) (reify b)
-        reflect env e = 
+                (VClosure env $ VApp (VVar (Free "quote")) body)
+                -- (VClosure env $ reify body)
+            VApp a b -> undefined -- VApp (VApp (VCtor "App") (reify a)) (reify b)
+
+        reflect env e =
           case e of
             VApp (VCtor "Abs") (VClosure env' x) ->
-              VClosure env' (reflect env' x)
-            VApp (VApp (VCtor "App") f) x -> VApp (reflect env f) (reflect env x)
+              VClosure env' (VApp (VVar $ Free "eval") x)
+            VApp (VApp (VCtor "App") f) x ->
+              go env $
+              VApp
+                (VApp (VVar $ Free "eval") f)
+                (VApp (VVar $ Free "eval") x)
             VApp (VCtor "Ctor") (VString s) -> VCtor s
-            VApp (VCtor "Var") (VVar v) -> VVar v
+            VApp (VCtor "Var") (VVar v) -> lookupEnv env v
             VApp (VCtor "Int") (VInt n) -> VInt n
             VApp (VCtor "Value") v -> v
+            VApp (VVar (Free "quote")) v -> v
             _ -> error $ "reflection failure: " ++ show e
